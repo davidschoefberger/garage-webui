@@ -23,6 +23,13 @@ export const quotaSchema = z.object({
 
 export type QuotaSchema = z.infer<typeof quotaSchema>;
 
+export const expirationSchema = z.object({
+  enabled: z.boolean(),
+  days: z.coerce.number().nullish(),
+});
+
+export type ExpirationSchema = z.infer<typeof expirationSchema>;
+
 export const allowKeysSchema = z.object({
   keys: z
     .object({

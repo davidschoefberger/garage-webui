@@ -18,15 +18,13 @@ type Props = {
 };
 
 const Actions = ({ prefix }: Props) => {
-  const { bucketName } = useBucketContext();
+  const { bucket } = useBucketContext();
   const queryClient = useQueryClient();
 
-  const putObject = usePutObject(bucketName, {
-    onSuccess: () => {
-      toast.success("File uploaded!");
-      queryClient.invalidateQueries({ queryKey: ["browse", bucketName] });
+  const putObject = usePutObject(bucket.id, {
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["browse", bucket.id] });
     },
-    onError: handleError,
   });
 
   const onUploadFile = () => {
@@ -47,7 +45,26 @@ const Actions = ({ prefix }: Props) => {
 
       for (const file of files) {
         const key = prefix + file.name;
-        putObject.mutate({ key, file });
+        const toastId = toast.loading(`Uploading ${file.name}… 0%`);
+
+        putObject.mutate(
+          {
+            key,
+            file,
+            onProgress: (percent) =>
+              toast.loading(`Uploading ${file.name}… ${percent}%`, {
+                id: toastId,
+              }),
+          },
+          {
+            onSuccess: () =>
+              toast.success(`Uploaded ${file.name}`, { id: toastId }),
+            onError: (err) =>
+              toast.error((err as Error)?.message || "Upload failed", {
+                id: toastId,
+              }),
+          }
+        );
       }
     };
 
@@ -76,7 +93,7 @@ type CreateFolderActionProps = {
 
 const CreateFolderAction = ({ prefix }: CreateFolderActionProps) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const { bucketName } = useBucketContext();
+  const { bucket } = useBucketContext();
   const queryClient = useQueryClient();
 
   const form = useForm<CreateFolderSchema>({
@@ -88,10 +105,10 @@ const CreateFolderAction = ({ prefix }: CreateFolderActionProps) => {
     if (isOpen) form.setFocus("name");
   }, [isOpen]);
 
-  const createFolder = usePutObject(bucketName, {
+  const createFolder = usePutObject(bucket.id, {
     onSuccess: () => {
       toast.success("Folder created!");
-      queryClient.invalidateQueries({ queryKey: ["browse", bucketName] });
+      queryClient.invalidateQueries({ queryKey: ["browse", bucket.id] });
       onClose();
       form.reset();
     },

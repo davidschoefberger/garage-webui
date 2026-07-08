@@ -21,4 +21,5 @@ export type Object = {
 export type PutObjectPayload = {
   key: string;
   file: File | null;
+  onProgress?: (percent: number) => void;
 };

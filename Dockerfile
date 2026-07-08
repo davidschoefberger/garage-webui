@@ -9,7 +9,7 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm run build
 
-FROM golang:1.23 AS backend
+FROM golang:1.25 AS backend
 WORKDIR /app
 
 COPY backend/go.mod backend/go.sum ./
@@ -22,11 +22,13 @@ RUN make
 FROM scratch
 
 COPY --from=alpine /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-COPY --from=ghcr.io/tarampampam/curl:8.6.0 /bin/curl /bin/curl
+# Provide a writable temp dir so large multipart uploads succeed (issue #44).
+COPY --from=alpine --chmod=1777 /tmp /tmp
 COPY --from=backend /app/main /bin/main
 
+# Use the binary's built-in healthcheck instead of shipping curl (issue #48).
 HEALTHCHECK --interval=5m --timeout=2s --retries=3 --start-period=15s CMD [ \
-    "curl", "--fail", "http://127.0.0.1:3909" \
+    "main", "-healthcheck" \
 ]
 
 ENTRYPOINT [ "main" ]

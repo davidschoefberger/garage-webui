@@ -2,6 +2,7 @@ package utils
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -43,7 +44,9 @@ func (g *garage) LoadConfig() error {
 func (g *garage) GetAdminEndpoint() string {
 	endpoint := os.Getenv("API_BASE_URL")
 	if len(endpoint) > 0 {
-		return endpoint
+		// Drop trailing slash so joining with request paths never yields a
+		// double slash (see issue #54).
+		return strings.TrimRight(endpoint, "/")
 	}
 
 	host := strings.Split(g.Config.RPCPublicAddr, ":")[0]
@@ -54,13 +57,13 @@ func (g *garage) GetAdminEndpoint() string {
 		endpoint = fmt.Sprintf("http://%s", endpoint)
 	}
 
-	return endpoint
+	return strings.TrimRight(endpoint, "/")
 }
 
 func (g *garage) GetS3Endpoint() string {
 	endpoint := os.Getenv("S3_ENDPOINT_URL")
 	if len(endpoint) > 0 {
-		return endpoint
+		return strings.TrimRight(endpoint, "/")
 	}
 
 	host := strings.Split(g.Config.RPCPublicAddr, ":")[0]
@@ -71,7 +74,7 @@ func (g *garage) GetS3Endpoint() string {
 		endpoint = fmt.Sprintf("http://%s", endpoint)
 	}
 
-	return endpoint
+	return strings.TrimRight(endpoint, "/")
 }
 
 func (g *garage) GetS3Region() string {
@@ -86,11 +89,42 @@ func (g *garage) GetS3Region() string {
 }
 
 func (g *garage) GetAdminKey() string {
+	// Allow reading the admin key from a file (e.g. a Docker/Kubernetes secret)
+	// via API_ADMIN_KEY_FILE, taking precedence over the inline env var (#66).
+	if path := os.Getenv("API_ADMIN_KEY_FILE"); len(path) > 0 {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			log.Printf("cannot read API_ADMIN_KEY_FILE %q: %v", path, err)
+		} else if key := strings.TrimSpace(string(data)); len(key) > 0 {
+			return key
+		}
+	}
+
 	key := os.Getenv("API_ADMIN_KEY")
 	if len(key) > 0 {
 		return key
 	}
 	return g.Config.Admin.AdminToken
+}
+
+// tlsInsecureSkipVerify reports whether TLS certificate verification should be
+// disabled for outgoing connections to Garage (self-signed certs, issue #53).
+func tlsInsecureSkipVerify() bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("TLS_INSECURE_SKIP_VERIFY"))) {
+	case "1", "true", "yes", "on":
+		return true
+	}
+	return false
+}
+
+// HTTPClient returns an *http.Client honoring the TLS_INSECURE_SKIP_VERIFY flag.
+func (g *garage) HTTPClient() *http.Client {
+	if !tlsInsecureSkipVerify() {
+		return &http.Client{}
+	}
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	return &http.Client{Transport: transport}
 }
 
 type FetchOptions struct {
@@ -139,7 +173,7 @@ func (g *garage) Fetch(url string, options *FetchOptions) ([]byte, error) {
 		}
 	}
 
-	client := &http.Client{}
+	client := g.HTTPClient()
 	res, err := client.Do(req)
 	if err != nil {
 		return nil, err

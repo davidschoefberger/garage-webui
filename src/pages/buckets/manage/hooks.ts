@@ -64,17 +64,40 @@ export const useAllowKey = (
 ) => {
   return useMutation({
     mutationFn: async (payload) => {
-      const promises = payload.map(async (key) => {
-        return api.post("/v2/AllowBucketKey", {
+      for (const key of payload) {
+        await api.post("/v2/AllowBucketKey", {
           body: {
             bucketId,
             accessKeyId: key.keyId,
             permissions: key.permissions,
           },
         });
+      }
+
+      // Verify the permissions were actually applied. Garage can return a
+      // success status without persisting the grant, which previously made
+      // this fail silently (issue #63).
+      const info = await api.get<Bucket>("/v2/GetBucketInfo", {
+        params: { id: bucketId },
       });
-      const result = await Promise.all(promises);
-      return result;
+
+      for (const key of payload) {
+        const applied = info.keys?.find((k) => k.accessKeyId === key.keyId);
+        const p = applied?.permissions;
+        if (
+          (key.permissions.read && !p?.read) ||
+          (key.permissions.write && !p?.write) ||
+          (key.permissions.owner && !p?.owner)
+        ) {
+          throw new Error(
+            `Could not apply permissions for key ${
+              key.keyId?.substring(0, 8) || key.keyId
+            }. The Garage admin API accepted the request but the grant was not persisted.`
+          );
+        }
+      }
+
+      return info;
     },
     ...options,
   });
@@ -107,6 +130,26 @@ export const useRemoveBucket = (
 ) => {
   return useMutation({
     mutationFn: (id) => api.post("/v2/DeleteBucket", { params: { id } }),
+    ...options,
+  });
+};
+
+export type LifecycleConfig = { enabled: boolean; days: number };
+
+export const useLifecycle = (id?: string | null) => {
+  return useQuery({
+    queryKey: ["lifecycle", id],
+    queryFn: () => api.get<LifecycleConfig>(`/buckets/${id}/lifecycle`),
+    enabled: !!id,
+  });
+};
+
+export const useSetLifecycle = (
+  id?: string | null,
+  options?: MutationOptions<any, Error, LifecycleConfig>
+) => {
+  return useMutation({
+    mutationFn: (body) => api.put(`/buckets/${id}/lifecycle`, { body }),
     ...options,
   });
 };
