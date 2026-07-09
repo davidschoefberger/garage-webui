@@ -1,10 +1,11 @@
-FROM node:20-slim AS frontend
+FROM node:22-slim AS frontend
 WORKDIR /app
 
-RUN npm install -g corepack@latest && corepack use pnpm@latest
+# Pin pnpm 9 (the version CI builds with); newer pnpm requires Node >= 22.13.
+RUN npm install -g pnpm@9
 
 COPY package.json pnpm-lock.yaml ./
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile
 
 COPY . .
 RUN pnpm run build
