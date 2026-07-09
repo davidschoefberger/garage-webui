@@ -110,3 +110,14 @@ export const useDeleteObject = (
     ...options,
   });
 };
+
+export const useRenameObject = (
+  bucket: string,
+  options?: UseMutationOptions<any, Error, { from: string; to: string }>
+) => {
+  return useMutation({
+    mutationFn: (data) =>
+      api.post(`/browse/${bucket}/rename`, { body: data }),
+    ...options,
+  });
+};

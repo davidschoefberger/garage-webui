@@ -27,6 +27,7 @@ func HandleApiRouter() *http.ServeMux {
 
 	browse := &Browse{}
 	router.HandleFunc("GET /browse/{bucket}", browse.GetObjects)
+	router.HandleFunc("POST /browse/{bucket}/rename", browse.RenameObject)
 	router.HandleFunc("GET /browse/{bucket}/{key...}", browse.GetOneObject)
 	router.HandleFunc("PUT /browse/{bucket}/{key...}", browse.PutObject)
 	router.HandleFunc("DELETE /browse/{bucket}/{key...}", browse.DeleteObject)

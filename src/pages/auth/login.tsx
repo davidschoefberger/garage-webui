@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { loginSchema } from "./schema";
 import { InputField } from "@/components/ui/input";
 import { useLogin } from "./hooks";
+import garageLogo from "@/assets/garage-logo.svg";
 
 export default function LoginPage() {
   const form = useForm({
@@ -17,6 +18,11 @@ export default function LoginPage() {
     <form onSubmit={form.handleSubmit((v) => login.mutate(v))}>
       <Card className="w-full max-w-md" bordered>
         <Card.Body>
+          <img
+            src={garageLogo}
+            alt="Garage"
+            className="w-full max-w-[120px] mx-auto mb-2"
+          />
           <Card.Title tag="h2">Login</Card.Title>
           <p className="text-base-content/60">
             Enter username and password below to log in to your account

@@ -108,10 +108,9 @@ func (l *Lifecycle) Set(w http.ResponseWriter, r *http.Request) {
 				{
 					ID:     aws.String(lifecycleRuleID),
 					Status: types.ExpirationStatusEnabled,
-					// Garage requires the prefix to be inside the Filter element.
-					// LifecycleRuleFilter is a union type in the AWS SDK, so an
-					// empty prefix member matches all objects.
-					Filter:     &types.LifecycleRuleFilterMemberPrefix{Value: ""},
+					// Garage requires the prefix to be inside the Filter element;
+					// an empty prefix matches all objects.
+					Filter:     &types.LifecycleRuleFilter{Prefix: aws.String("")},
 					Expiration: &types.LifecycleExpiration{Days: aws.Int32(payload.Days)},
 				},
 			},

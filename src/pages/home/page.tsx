@@ -2,27 +2,40 @@ import Page from "@/context/page-context";
 import { useNodesHealth } from "./hooks";
 import StatsCard from "./components/stats-card";
 import {
+  Boxes,
   Database,
   DatabaseZap,
-  FileBox,
-  FileCheck,
-  FileClock,
   HardDrive,
+  HardDriveDownload,
   HardDriveUpload,
   Leaf,
   PieChart,
 } from "lucide-react";
 import { cn, readableBytes, ucfirst } from "@/lib/utils";
 import { useBuckets } from "../buckets/hooks";
+import { useClusterStatus } from "../cluster/hooks";
 import { useMemo } from "react";
 
 const HomePage = () => {
   const { data: health } = useNodesHealth();
   const { data: buckets } = useBuckets();
+  const { data: status } = useClusterStatus();
 
   const totalUsage = useMemo(() => {
     return buckets?.reduce((acc, bucket) => acc + bucket.bytes, 0);
   }, [buckets]);
+
+  const capacity = useMemo(() => {
+    let available = 0;
+    let total = 0;
+    for (const node of status?.nodes || []) {
+      if (node.dataPartition) {
+        available += node.dataPartition.available;
+        total += node.dataPartition.total;
+      }
+    }
+    return { available, total };
+  }, [status]);
 
   return (
     <div className="container">
@@ -59,25 +72,21 @@ const HomePage = () => {
           value={health?.storageNodesUp}
         />
         <StatsCard
-          title="Partitions"
-          icon={FileBox}
-          value={health?.partitions}
-        />
-        <StatsCard
-          title="Partitions Quorum"
-          icon={FileClock}
-          value={health?.partitionsQuorum}
-        />
-        <StatsCard
-          title="Active Partitions"
-          icon={FileCheck}
-          value={health?.partitionsAllOk}
-        />
-        <StatsCard
           title="Total Usage"
           icon={PieChart}
           value={readableBytes(totalUsage)}
         />
+        <StatsCard
+          title="Free Space"
+          icon={HardDriveDownload}
+          value={capacity.total > 0 ? readableBytes(capacity.available) : "n/a"}
+        />
+        <StatsCard
+          title="Disk Capacity"
+          icon={Database}
+          value={capacity.total > 0 ? readableBytes(capacity.total) : "n/a"}
+        />
+        <StatsCard title="Buckets" icon={Boxes} value={buckets?.length} />
       </section>
     </div>
   );

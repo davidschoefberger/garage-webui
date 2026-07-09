@@ -1,6 +1,7 @@
 import { FolderPlus, UploadIcon } from "lucide-react";
 import Button from "@/components/ui/button";
 import { usePutObject } from "./hooks";
+import { useUpload } from "./upload-manager";
 import { toast } from "sonner";
 import { handleError } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
@@ -18,14 +19,7 @@ type Props = {
 };
 
 const Actions = ({ prefix }: Props) => {
-  const { bucket } = useBucketContext();
-  const queryClient = useQueryClient();
-
-  const putObject = usePutObject(bucket.id, {
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["browse", bucket.id] });
-    },
-  });
+  const { enqueue } = useUpload();
 
   const onUploadFile = () => {
     const input = document.createElement("input");
@@ -34,37 +28,8 @@ const Actions = ({ prefix }: Props) => {
 
     input.onchange = (e) => {
       const files = (e.target as HTMLInputElement).files;
-      if (!files?.length) {
-        return;
-      }
-
-      if (files.length > 20) {
-        toast.error("You can only upload up to 20 files at a time");
-        return;
-      }
-
-      for (const file of files) {
-        const key = prefix + file.name;
-        const toastId = toast.loading(`Uploading ${file.name}… 0%`);
-
-        putObject.mutate(
-          {
-            key,
-            file,
-            onProgress: (percent) =>
-              toast.loading(`Uploading ${file.name}… ${percent}%`, {
-                id: toastId,
-              }),
-          },
-          {
-            onSuccess: () =>
-              toast.success(`Uploaded ${file.name}`, { id: toastId }),
-            onError: (err) =>
-              toast.error((err as Error)?.message || "Upload failed", {
-                id: toastId,
-              }),
-          }
-        );
+      if (files?.length) {
+        enqueue(files, prefix);
       }
     };
 

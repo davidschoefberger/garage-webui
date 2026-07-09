@@ -16,6 +16,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go"
@@ -201,20 +202,32 @@ func (b *Browse) PutObject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var contentType string = ""
-	var size int64 = 0
-
-	if file != nil {
-		contentType = headers.Header.Get("Content-Type")
-		size = headers.Size
+	// Directory marker: create an empty object with a trailing slash.
+	if file == nil {
+		result, err := client.PutObject(context.Background(), &s3.PutObjectInput{
+			Bucket: aws.String(s3Bucket),
+			Key:    aws.String(key),
+		})
+		if err != nil {
+			utils.ResponseError(w, fmt.Errorf("cannot put object: %w", err))
+			return
+		}
+		utils.ResponseSuccess(w, result)
+		return
 	}
 
-	result, err := client.PutObject(context.Background(), &s3.PutObjectInput{
-		Bucket:        aws.String(s3Bucket),
-		Key:           aws.String(key),
-		Body:          file,
-		ContentLength: aws.Int64(size),
-		ContentType:   aws.String(contentType),
+	// Use the managed uploader so large files are streamed as a multipart
+	// upload instead of being buffered/sent in a single request (#44).
+	uploader := manager.NewUploader(client, func(u *manager.Uploader) {
+		u.PartSize = 16 * 1024 * 1024 // 16 MiB parts
+		u.Concurrency = 3
+	})
+
+	result, err := uploader.Upload(context.Background(), &s3.PutObjectInput{
+		Bucket:      aws.String(s3Bucket),
+		Key:         aws.String(key),
+		Body:        file,
+		ContentType: aws.String(headers.Header.Get("Content-Type")),
 	})
 
 	if err != nil {
@@ -293,6 +306,98 @@ func (b *Browse) DeleteObject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.ResponseSuccess(w, res)
+}
+
+type renamePayload struct {
+	From string `json:"from"`
+	To   string `json:"to"`
+}
+
+// RenameObject renames/moves an object or a whole folder. S3 has no native
+// rename, so this copies to the new key and deletes the old one.
+func (b *Browse) RenameObject(w http.ResponseWriter, r *http.Request) {
+	bucket := r.PathValue("bucket")
+
+	var payload renamePayload
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		utils.ResponseError(w, err)
+		return
+	}
+	if payload.From == "" || payload.To == "" || payload.From == payload.To {
+		utils.ResponseError(w, errors.New("invalid source or destination key"))
+		return
+	}
+
+	client, s3Bucket, err := resolveBucket(bucket)
+	if err != nil {
+		utils.ResponseError(w, err)
+		return
+	}
+
+	ctx := context.Background()
+	isDirectory := strings.HasSuffix(payload.From, "/")
+
+	// Collect the source keys to move (a single object, or every object under
+	// a folder prefix).
+	var sourceKeys []string
+	if isDirectory {
+		var token *string
+		for {
+			objects, err := client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
+				Bucket:            aws.String(s3Bucket),
+				Prefix:            aws.String(payload.From),
+				ContinuationToken: token,
+			})
+			if err != nil {
+				utils.ResponseError(w, err)
+				return
+			}
+			for _, o := range objects.Contents {
+				sourceKeys = append(sourceKeys, *o.Key)
+			}
+			if objects.IsTruncated == nil || !*objects.IsTruncated {
+				break
+			}
+			token = objects.NextContinuationToken
+		}
+	} else {
+		sourceKeys = []string{payload.From}
+	}
+
+	if len(sourceKeys) == 0 {
+		utils.ResponseError(w, errors.New("source not found"))
+		return
+	}
+
+	// Copy every source key to its new location.
+	for _, srcKey := range sourceKeys {
+		destKey := payload.To + strings.TrimPrefix(srcKey, payload.From)
+		copySource := s3Bucket + "/" + encodeKeyPath(srcKey)
+
+		if _, err := client.CopyObject(ctx, &s3.CopyObjectInput{
+			Bucket:     aws.String(s3Bucket),
+			Key:        aws.String(destKey),
+			CopySource: aws.String(copySource),
+		}); err != nil {
+			utils.ResponseError(w, fmt.Errorf("cannot copy %s: %w", srcKey, err))
+			return
+		}
+	}
+
+	// Delete the originals.
+	ids := make([]types.ObjectIdentifier, 0, len(sourceKeys))
+	for _, srcKey := range sourceKeys {
+		ids = append(ids, types.ObjectIdentifier{Key: aws.String(srcKey)})
+	}
+	if _, err := client.DeleteObjects(ctx, &s3.DeleteObjectsInput{
+		Bucket: aws.String(s3Bucket),
+		Delete: &types.Delete{Objects: ids},
+	}); err != nil {
+		utils.ResponseError(w, fmt.Errorf("cannot remove source after copy: %w", err))
+		return
+	}
+
+	utils.ResponseSuccess(w, true)
 }
 
 // resolvedBucket holds the credentials and the S3-addressable name resolved for

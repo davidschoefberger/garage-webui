@@ -146,8 +146,10 @@ Configurable envs:
 - `BASE_PATH`: Base path or prefix for Web UI.
 - `API_BASE_URL`: Garage admin API endpoint URL.
 - `API_ADMIN_KEY`: Admin API key.
+- `API_ADMIN_KEY_FILE`: Path to a file containing the admin API key (e.g. a Docker/Kubernetes secret). Takes precedence over `API_ADMIN_KEY`.
 - `S3_REGION`: S3 Region.
 - `S3_ENDPOINT_URL`: S3 Endpoint url.
+- `TLS_INSECURE_SKIP_VERIFY`: Set to `true` to skip TLS certificate verification when connecting to Garage over HTTPS (e.g. self-signed certificates). Use with care.
 
 ### Authentication
 
