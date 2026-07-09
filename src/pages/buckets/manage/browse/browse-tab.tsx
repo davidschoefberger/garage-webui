@@ -7,7 +7,7 @@ import ObjectListNavigator from "./object-list-navigator";
 import Actions from "./actions";
 import { useBucketContext } from "../context";
 import ShareDialog from "./share-dialog";
-import { UploadDropzone, UploadProvider } from "./upload-manager";
+import { UploadProvider } from "./upload-manager";
 
 const getInitialPrefixes = (searchParams: URLSearchParams) => {
   const prefix = searchParams.get("prefix");
@@ -51,24 +51,22 @@ const BrowseTab = () => {
   }
 
   return (
-    <UploadProvider bucketId={bucket.id}>
-      <UploadDropzone prefix={prefixHistory[curPrefix] || ""}>
-        <Card className="pb-2">
-          <ObjectListNavigator
-            curPrefix={curPrefix}
-            setCurPrefix={setCurPrefix}
-            prefixHistory={prefixHistory}
-            actions={<Actions prefix={prefixHistory[curPrefix] || ""} />}
-          />
+    <UploadProvider bucketId={bucket.id} prefix={prefixHistory[curPrefix] || ""}>
+      <Card className="pb-2">
+        <ObjectListNavigator
+          curPrefix={curPrefix}
+          setCurPrefix={setCurPrefix}
+          prefixHistory={prefixHistory}
+          actions={<Actions prefix={prefixHistory[curPrefix] || ""} />}
+        />
 
-          <ObjectList
-            prefix={prefixHistory[curPrefix] || ""}
-            onPrefixChange={gotoPrefix}
-          />
+        <ObjectList
+          prefix={prefixHistory[curPrefix] || ""}
+          onPrefixChange={gotoPrefix}
+        />
 
-          <ShareDialog />
-        </Card>
-      </UploadDropzone>
+        <ShareDialog />
+      </Card>
     </UploadProvider>
   );
 };

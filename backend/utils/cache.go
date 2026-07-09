@@ -29,6 +29,10 @@ func (c *CacheManager) Set(key string, value interface{}, ttl time.Duration) {
 	})
 }
 
+func (c *CacheManager) Delete(key string) {
+	c.cache.Delete(key)
+}
+
 func (c *CacheManager) Get(key string) interface{} {
 	entry, ok := c.cache.Load(key)
 	if !ok {

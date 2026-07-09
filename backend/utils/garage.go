@@ -89,19 +89,9 @@ func (g *garage) GetS3Region() string {
 }
 
 func (g *garage) GetAdminKey() string {
-	// Allow reading the admin key from a file (e.g. a Docker/Kubernetes secret)
-	// via API_ADMIN_KEY_FILE, taking precedence over the inline env var (#66).
-	if path := os.Getenv("API_ADMIN_KEY_FILE"); len(path) > 0 {
-		data, err := os.ReadFile(path)
-		if err != nil {
-			log.Printf("cannot read API_ADMIN_KEY_FILE %q: %v", path, err)
-		} else if key := strings.TrimSpace(string(data)); len(key) > 0 {
-			return key
-		}
-	}
-
-	key := os.Getenv("API_ADMIN_KEY")
-	if len(key) > 0 {
+	// Supports API_ADMIN_KEY and API_ADMIN_KEY_FILE (Docker/K8s secret, #66),
+	// falling back to the admin token from the Garage config.
+	if key := GetSecret("API_ADMIN_KEY"); len(key) > 0 {
 		return key
 	}
 	return g.Config.Admin.AdminToken

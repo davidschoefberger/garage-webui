@@ -22,7 +22,7 @@ func (c *Auth) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userPass := strings.Split(utils.GetEnv("AUTH_USER_PASS", ""), ":")
+	userPass := strings.Split(utils.GetSecret("AUTH_USER_PASS"), ":")
 	if len(userPass) < 2 {
 		utils.ResponseErrorStatus(w, errors.New("AUTH_USER_PASS not set"), 500)
 		return
@@ -49,7 +49,7 @@ func (c *Auth) GetStatus(w http.ResponseWriter, r *http.Request) {
 	authSession := utils.Session.Get(r, "authenticated")
 	enabled := false
 
-	if utils.GetEnv("AUTH_USER_PASS", "") != "" {
+	if utils.GetSecret("AUTH_USER_PASS") != "" {
 		enabled = true
 	}
 

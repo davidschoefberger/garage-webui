@@ -308,6 +308,14 @@ func (b *Browse) DeleteObject(w http.ResponseWriter, r *http.Request) {
 	utils.ResponseSuccess(w, res)
 }
 
+// InvalidateCache drops the cached credentials/name for a bucket so that key
+// permission changes take effect immediately instead of after the cache TTL.
+func (b *Browse) InvalidateCache(w http.ResponseWriter, r *http.Request) {
+	bucket := r.PathValue("bucket")
+	utils.Cache.Delete(fmt.Sprintf("bucket:%s", bucket))
+	utils.ResponseSuccess(w, true)
+}
+
 type renamePayload struct {
 	From string `json:"from"`
 	To   string `json:"to"`
@@ -486,7 +494,9 @@ func resolveBucket(bucketRef string) (*s3.Client, string, error) {
 			creds: credentials.NewStaticCredentialsProvider(key.AccessKeyID, key.SecretAccessKey, ""),
 			name:  name,
 		}
-		utils.Cache.Set(cacheKey, r, time.Hour)
+		// Short TTL so revoked keys / permission changes self-heal quickly;
+		// the cache is also cleared explicitly via InvalidateCache.
+		utils.Cache.Set(cacheKey, r, 10*time.Minute)
 	}
 
 	client := newS3Client(r.creds)

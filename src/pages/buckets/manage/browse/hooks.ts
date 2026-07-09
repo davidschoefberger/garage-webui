@@ -19,21 +19,44 @@ const encodeKey = (key: string) =>
     .map(encodeURIComponent)
     .join("/");
 
-// Upload a file via XMLHttpRequest so we can report upload progress (issue #70).
-const uploadObject = (
+export class AbortError extends Error {
+  constructor() {
+    super("aborted");
+    this.name = "AbortError";
+  }
+}
+
+type UploadObjectOptions = {
+  onProgress?: (percent: number) => void;
+  signal?: AbortSignal;
+};
+
+// Upload a file via XMLHttpRequest so we can report progress (#70) and support
+// cancellation via an AbortSignal.
+export const uploadObject = (
   bucket: string,
   key: string,
   file: File,
-  onProgress?: (percent: number) => void
+  options?: UploadObjectOptions
 ) =>
   new Promise<unknown>((resolve, reject) => {
+    const signal = options?.signal;
+    if (signal?.aborted) {
+      reject(new AbortError());
+      return;
+    }
+
     const xhr = new XMLHttpRequest();
     xhr.open("PUT", `${API_URL}/browse/${bucket}/${encodeKey(key)}`, true);
     xhr.withCredentials = true;
 
+    if (signal) {
+      signal.addEventListener("abort", () => xhr.abort(), { once: true });
+    }
+
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable) {
-        onProgress?.(Math.round((e.loaded / e.total) * 100));
+        options?.onProgress?.(Math.round((e.loaded / e.total) * 100));
       }
     };
 
@@ -60,6 +83,7 @@ const uploadObject = (
       reject(new APIError(message, xhr.status));
     };
 
+    xhr.onabort = () => reject(new AbortError());
     xhr.onerror = () => reject(new APIError("Network error", xhr.status || 0));
 
     const formData = new FormData();
@@ -87,7 +111,9 @@ export const usePutObject = (
       // Files are uploaded via XHR so we can surface progress; folder creation
       // (no file) still goes through the regular JSON/FormData path.
       if (body.file) {
-        return uploadObject(bucket, body.key, body.file, body.onProgress);
+        return uploadObject(bucket, body.key, body.file, {
+          onProgress: body.onProgress,
+        });
       }
 
       return api.put(`/browse/${bucket}/${encodeKey(body.key)}`, {

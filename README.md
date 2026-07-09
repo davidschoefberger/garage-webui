@@ -8,10 +8,14 @@ A simple admin web UI for [Garage](https://garagehq.deuxfleurs.fr/), a self-host
 
 ## Features
 
-- Garage health status
+- Garage health status & cluster metrics dashboard
 - Cluster & layout management
 - Create, update, or view bucket information
-- Integrated objects/bucket browser
+- Bucket object expiration (S3 lifecycle)
+- Integrated object browser with:
+  - Drag & drop upload (whole page) with a progress window, per-file cancel & retry, and multipart upload for large files
+  - Rename / move objects and folders
+  - Multi-select with bulk delete & move, plus filtering
 - Create & assign access keys
 
 ## Installation
@@ -150,6 +154,9 @@ Configurable envs:
 - `S3_REGION`: S3 Region.
 - `S3_ENDPOINT_URL`: S3 Endpoint url.
 - `TLS_INSECURE_SKIP_VERIFY`: Set to `true` to skip TLS certificate verification when connecting to Garage over HTTPS (e.g. self-signed certificates). Use with care.
+- `AUTH_USER_PASS_FILE`: Path to a file containing the `username:password_hash` auth value (e.g. a Docker/Kubernetes secret). Takes precedence over `AUTH_USER_PASS`.
+- `SESSION_COOKIE_SECURE`: Set to `true` to mark the session cookie as `Secure`. Defaults to `false` so login works when the UI is served over plain HTTP behind a TLS-terminating reverse proxy / load balancer. Enable it when serving directly over HTTPS.
+- `SESSION_COOKIE_SAMESITE`: Session cookie `SameSite` mode: `lax` (default), `strict`, or `none`. Use `none` (together with `SESSION_COOKIE_SECURE=true`) only if you embed the UI cross-site.
 
 ### Authentication
 

@@ -97,6 +97,9 @@ export const useAllowKey = (
         }
       }
 
+      // Drop the backend's cached credentials so browsing picks up the change.
+      await api.post(`/browse/${bucketId}/invalidate-cache`).catch(() => {});
+
       return info;
     },
     ...options,
@@ -112,14 +115,16 @@ export const useDenyKey = (
   >
 ) => {
   return useMutation({
-    mutationFn: (payload) => {
-      return api.post("/v2/DenyBucketKey", {
+    mutationFn: async (payload) => {
+      const res = await api.post("/v2/DenyBucketKey", {
         body: {
           bucketId,
           accessKeyId: payload.keyId,
           permissions: payload.permissions,
         },
       });
+      await api.post(`/browse/${bucketId}/invalidate-cache`).catch(() => {});
+      return res;
     },
     ...options,
   });

@@ -7,7 +7,7 @@ import (
 )
 
 func AuthMiddleware(next http.Handler) http.Handler {
-	authData := utils.GetEnv("AUTH_USER_PASS", "")
+	authData := utils.GetSecret("AUTH_USER_PASS")
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		auth := utils.Session.Get(r, "authenticated")
