@@ -158,3 +158,31 @@ export const useSetLifecycle = (
     ...options,
   });
 };
+
+export type CorsRule = {
+  allowedOrigins: string[];
+  allowedMethods: string[];
+  allowedHeaders?: string[];
+  exposeHeaders?: string[];
+  maxAgeSeconds: number;
+};
+
+export type CorsConfig = { rules: CorsRule[] };
+
+export const useCors = (id?: string | null) => {
+  return useQuery({
+    queryKey: ["cors", id],
+    queryFn: () => api.get<CorsConfig>(`/buckets/${id}/cors`),
+    enabled: !!id,
+  });
+};
+
+export const useSetCors = (
+  id?: string | null,
+  options?: MutationOptions<any, Error, CorsConfig>
+) => {
+  return useMutation({
+    mutationFn: (body) => api.put(`/buckets/${id}/cors`, { body }),
+    ...options,
+  });
+};

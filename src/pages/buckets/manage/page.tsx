@@ -6,12 +6,14 @@ import {
   ChartLine,
   CircleXIcon,
   FolderSearch,
+  Globe,
   LockKeyhole,
 } from "lucide-react";
 import OverviewTab from "./overview/overview-tab";
 import PermissionsTab from "./permissions/permissions-tab";
 import MenuButton from "./components/menu-button";
 import BrowseTab from "./browse/browse-tab";
+import CorsTab from "./cors/cors-tab";
 import { BucketContext } from "./context";
 import { Alert, Loading } from "react-daisyui";
 
@@ -33,6 +35,12 @@ const tabs: Tab[] = [
     title: "Browse",
     icon: FolderSearch,
     Component: BrowseTab,
+  },
+  {
+    name: "cors",
+    title: "CORS",
+    icon: Globe,
+    Component: CorsTab,
   },
 ];
 

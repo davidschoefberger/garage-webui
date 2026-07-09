@@ -25,6 +25,10 @@ func HandleApiRouter() *http.ServeMux {
 	router.HandleFunc("GET /buckets/{bucket}/lifecycle", lifecycle.Get)
 	router.HandleFunc("PUT /buckets/{bucket}/lifecycle", lifecycle.Set)
 
+	cors := &Cors{}
+	router.HandleFunc("GET /buckets/{bucket}/cors", cors.Get)
+	router.HandleFunc("PUT /buckets/{bucket}/cors", cors.Set)
+
 	browse := &Browse{}
 	router.HandleFunc("GET /browse/{bucket}", browse.GetObjects)
 	router.HandleFunc("POST /browse/{bucket}/invalidate-cache", browse.InvalidateCache)

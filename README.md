@@ -12,6 +12,7 @@ A simple admin web UI for [Garage](https://garagehq.deuxfleurs.fr/), a self-host
 - Cluster & layout management
 - Create, update, or view bucket information
 - Bucket object expiration (S3 lifecycle)
+- Bucket CORS configuration (for browser/presigned access)
 - Integrated object browser with:
   - Drag & drop upload (whole page) with a progress window, per-file cancel & retry, and multipart upload for large files
   - Rename / move objects and folders
@@ -170,14 +171,20 @@ htpasswd -nbBC 10 "YOUR_USERNAME" "YOUR_PASSWORD"
 
 > If command 'htpasswd' is not found, install `apache2-utils` using your package manager.
 
-Then update your `docker-compose.yml`:
+Then update your `docker-compose.yml`. Note that Docker Compose performs variable
+interpolation on `$`, so every `$` in the bcrypt hash must be escaped as `$$`
+(otherwise the hash is corrupted and login always fails):
 
 ```yml
 webui:
   ....
   environment:
-    AUTH_USER_PASS: "username:$2y$10$DSTi9o..."
+    # bcrypt hash "$2y$10$DSTi9o..." with each $ escaped as $$
+    AUTH_USER_PASS: "username:$$2y$$10$$DSTi9o..."
 ```
+
+> Alternatively, use `AUTH_USER_PASS_FILE` to point at a file (e.g. a Docker
+> secret) containing the raw `username:password_hash` value — no escaping needed.
 
 ### Running
 
