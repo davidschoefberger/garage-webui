@@ -245,11 +245,7 @@ export const UploadProvider = ({
           <progress
             className={cn(
               "progress w-full",
-              finished && !errored
-                ? "progress-success"
-                : errored
-                  ? "progress-error"
-                  : "progress-primary"
+              errored ? "progress-error" : "progress-success"
             )}
             value={overall}
             max={100}
@@ -287,13 +283,10 @@ export const UploadProvider = ({
                   ) : (
                     <progress
                       className={cn(
-                        "progress w-full mt-1 h-1",
-                        item.status === "done"
-                          ? "progress-success"
-                          : item.status === "canceled" ||
-                              item.status === "error"
-                            ? "progress-error"
-                            : "progress-primary"
+                        "progress w-full mt-1 h-2",
+                        item.status === "canceled" || item.status === "error"
+                          ? "progress-error"
+                          : "progress-success"
                       )}
                       value={item.progress}
                       max={100}

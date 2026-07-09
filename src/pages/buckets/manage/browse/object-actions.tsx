@@ -1,4 +1,5 @@
-import { Dropdown, Modal } from "react-daisyui";
+import { Modal } from "react-daisyui";
+import { createPortal } from "react-dom";
 import { Object } from "./types";
 import Button from "@/components/ui/button";
 import {
@@ -16,7 +17,7 @@ import { handleError } from "@/lib/utils";
 import { API_URL } from "@/lib/api";
 import { shareDialog } from "./share-dialog";
 import { useDisclosure } from "@/hooks/useDisclosure";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type Props = {
   prefix?: string;
@@ -24,10 +25,14 @@ type Props = {
   end?: boolean;
 };
 
-const ObjectActions = ({ prefix = "", object, end }: Props) => {
+const ObjectActions = ({ prefix = "", object }: Props) => {
   const { bucket } = useBucketContext();
   const queryClient = useQueryClient();
   const isDirectory = object.objectKey.endsWith("/");
+
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
 
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: ["browse", bucket.id] });
@@ -41,6 +46,39 @@ const ObjectActions = ({ prefix = "", object, end }: Props) => {
   });
 
   const rename = useDisclosure();
+
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
+
+  const openMenu = () => {
+    const rect = btnRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const width = 192;
+    const height = 148;
+    let left = rect.right - width;
+    if (left < 8) left = 8;
+    let top = rect.bottom + 4;
+    if (top + height > window.innerHeight) top = rect.top - height - 4;
+    if (top < 8) top = 8;
+    setPos({ top, left });
+    setMenuOpen(true);
+  };
+
+  // Close the floating menu on scroll / resize / escape.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const close = () => closeMenu();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeMenu();
+    };
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen, closeMenu]);
 
   const onDownload = () => {
     window.open(API_URL + object.url + "?dl=1", "_blank");
@@ -61,6 +99,11 @@ const ObjectActions = ({ prefix = "", object, end }: Props) => {
     }
   };
 
+  const runAndClose = (fn: () => void) => () => {
+    closeMenu();
+    fn();
+  };
+
   return (
     <td className="!p-0 w-auto">
       <span className="w-full flex flex-row justify-end pr-2">
@@ -68,31 +111,48 @@ const ObjectActions = ({ prefix = "", object, end }: Props) => {
           <Button icon={DownloadIcon} color="ghost" onClick={onDownload} />
         )}
 
-        <Dropdown end vertical={end ? "top" : "bottom"}>
-          <Dropdown.Toggle button={false}>
-            <Button icon={EllipsisVertical} color="ghost" />
-          </Dropdown.Toggle>
-
-          <Dropdown.Menu className="gap-y-1">
-            <Dropdown.Item onClick={rename.onOpen}>
-              <Pencil /> Rename
-            </Dropdown.Item>
-            <Dropdown.Item
-              onClick={() =>
-                shareDialog.open({ key: object.objectKey, prefix })
-              }
-            >
-              <Share2 /> Share
-            </Dropdown.Item>
-            <Dropdown.Item
-              className="text-error bg-error/10"
-              onClick={onDelete}
-            >
-              <Trash /> Delete
-            </Dropdown.Item>
-          </Dropdown.Menu>
-        </Dropdown>
+        <Button
+          ref={btnRef}
+          icon={EllipsisVertical}
+          color="ghost"
+          onClick={openMenu}
+        />
       </span>
+
+      {menuOpen &&
+        createPortal(
+          <>
+            <div className="fixed inset-0 z-[90]" onClick={closeMenu} />
+            <ul
+              className="menu bg-base-100 rounded-box shadow-lg w-48 p-2 gap-y-1 fixed z-[100]"
+              style={{ top: pos.top, left: pos.left }}
+            >
+              <li>
+                <a onClick={runAndClose(rename.onOpen)}>
+                  <Pencil size={16} /> Rename
+                </a>
+              </li>
+              <li>
+                <a
+                  onClick={runAndClose(() =>
+                    shareDialog.open({ key: object.objectKey, prefix })
+                  )}
+                >
+                  <Share2 size={16} /> Share
+                </a>
+              </li>
+              <li>
+                <a
+                  className="text-error"
+                  onClick={runAndClose(onDelete)}
+                >
+                  <Trash size={16} /> Delete
+                </a>
+              </li>
+            </ul>
+          </>,
+          document.body
+        )}
 
       <RenameDialog
         isOpen={rename.isOpen}
