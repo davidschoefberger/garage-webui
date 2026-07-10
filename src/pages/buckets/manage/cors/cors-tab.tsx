@@ -141,8 +141,8 @@ const CorsTab = () => {
                 Allowed origins (one per line, <code>*</code> for any)
               </span>
               <textarea
-                className="textarea textarea-bordered w-full mt-1"
-                rows={2}
+                className="textarea textarea-bordered w-full mt-1 resize-none"
+                rows={3}
                 value={rule.origins}
                 onChange={(e) => updateRule(i, { origins: e.target.value })}
                 placeholder="https://app.example.com"

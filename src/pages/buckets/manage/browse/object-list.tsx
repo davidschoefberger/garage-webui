@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useBucketContext } from "../context";
 import ObjectActions from "./object-actions";
+import FolderPicker from "./folder-picker";
 import GotoTopButton from "@/components/ui/goto-top-btn";
 import Button from "@/components/ui/button";
 import { useEffect, useMemo, useState } from "react";
@@ -350,6 +351,7 @@ const MoveDialog = ({
   busy,
   onMove,
 }: MoveDialogProps) => {
+  const { bucket } = useBucketContext();
   const [dest, setDest] = useState(defaultDest);
 
   useEffect(() => {
@@ -361,14 +363,12 @@ const MoveDialog = ({
       <Modal.Header>Move {count} item(s)</Modal.Header>
       <Modal.Body>
         <p className="text-sm text-base-content/70 mb-2">
-          Destination folder (relative to the bucket root, empty = root):
+          Pick the destination folder:
         </p>
-        <input
-          className="input input-bordered w-full"
-          placeholder="e.g. archive/2026/"
-          value={dest}
-          onChange={(e) => setDest(e.target.value)}
-        />
+        <FolderPicker bucketId={bucket.id} prefix={dest} onChange={setDest} />
+        <p className="text-sm mt-3">
+          Move to: <span className="font-medium">/{dest}</span>
+        </p>
       </Modal.Body>
       <Modal.Actions>
         <Button onClick={onClose} disabled={busy}>
@@ -380,7 +380,7 @@ const MoveDialog = ({
           loading={busy}
           disabled={busy}
         >
-          Move
+          Move here
         </Button>
       </Modal.Actions>
     </Modal>
