@@ -18,6 +18,8 @@ import api from "@/lib/api";
 import * as utils from "@/lib/utils";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { useUpdateCheck } from "@/hooks/useUpdateCheck";
+import { ArrowUpCircle } from "lucide-react";
 
 const pages = [
   { icon: LayoutDashboard, title: "Dashboard", path: "/", exact: true },
@@ -29,6 +31,7 @@ const pages = [
 const Sidebar = () => {
   const { pathname } = useLocation();
   const auth = useAuth();
+  const { data: update } = useUpdateCheck();
 
   return (
     <aside className="bg-base-100 border-r border-base-300/30 w-[80%] md:w-[250px] flex flex-col items-stretch overflow-hidden h-full">
@@ -42,6 +45,18 @@ const Sidebar = () => {
         <p className="text-xs text-center text-base-content/50">
           v{__APP_VERSION__}
         </p>
+        {update?.webui.updateAvailable && (
+          <a
+            href={update.webui.url}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-1 flex items-center justify-center gap-1 text-xs text-primary hover:underline"
+            title={`Latest: ${update.webui.latest}`}
+          >
+            <ArrowUpCircle size={13} />
+            Update {update.webui.latest}
+          </a>
+        )}
       </div>
 
       <Menu className="gap-y-1 flex-1 overflow-y-auto">

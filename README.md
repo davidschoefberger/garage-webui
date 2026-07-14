@@ -158,6 +158,9 @@ Configurable envs:
 - `AUTH_USER_PASS_FILE`: Path to a file containing the `username:password_hash` auth value (e.g. a Docker/Kubernetes secret). Takes precedence over `AUTH_USER_PASS`.
 - `SESSION_COOKIE_SECURE`: Set to `true` to mark the session cookie as `Secure`. Defaults to `false` so login works when the UI is served over plain HTTP behind a TLS-terminating reverse proxy / load balancer. Enable it when serving directly over HTTPS.
 - `SESSION_COOKIE_SAMESITE`: Session cookie `SameSite` mode: `lax` (default), `strict`, or `none`. Use `none` (together with `SESSION_COOKIE_SECURE=true`) only if you embed the UI cross-site.
+- `UPDATE_CHECK_DISABLED`: Set to `true` to disable the built-in update check (which contacts GitHub to compare versions). Useful for air-gapped deployments.
+- `UPDATE_WEBUI_REPO`: GitHub `owner/repo` used to look up the latest garage-webui release. Defaults to `davidschoefberger/garage-webui`.
+- `UPDATE_GARAGE_REPO`: GitHub `owner/repo` (mirror) used to look up the latest Garage version. Defaults to `deuxfleurs-org/garage`.
 
 ### Authentication
 

@@ -3,10 +3,13 @@ import { useClusterStatus, useNodeInfo } from "./hooks";
 import { Card } from "react-daisyui";
 import NodesList from "./components/nodes-list";
 import { useMemo } from "react";
+import { useUpdateCheck } from "@/hooks/useUpdateCheck";
+import { ArrowUpCircle } from "lucide-react";
 
 const ClusterPage = () => {
   const { data } = useClusterStatus();
   const { data: node } = useNodeInfo();
+  const { data: update } = useUpdateCheck();
 
   const nodes = useMemo(() => {
     if (!data) return [];
@@ -31,6 +34,18 @@ const ClusterPage = () => {
 
           {/* <DetailItem title="Node ID" value={node?.nodeId} /> */}
           <DetailItem title="Garage Version" value={node?.garageVersion} />
+          {update?.garage.updateAvailable && (
+            <a
+              href={update.garage.url}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1 text-xs text-primary hover:underline ml-[calc(33%+0.75rem)]"
+              title={`Latest: ${update.garage.latest}`}
+            >
+              <ArrowUpCircle size={13} />
+              Update available: {update.garage.latest}
+            </a>
+          )}
           {/* <DetailItem title="Rust version" value={data?.rustVersion} /> */}
           <DetailItem title="DB engine" value={node?.dbEngine} />
           <DetailItem

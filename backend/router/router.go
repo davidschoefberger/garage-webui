@@ -18,6 +18,9 @@ func HandleApiRouter() *http.ServeMux {
 	config := &Config{}
 	router.HandleFunc("GET /config", config.GetAll)
 
+	update := &Update{}
+	router.HandleFunc("GET /update/check", update.Check)
+
 	buckets := &Buckets{}
 	router.HandleFunc("GET /buckets", buckets.GetAll)
 
