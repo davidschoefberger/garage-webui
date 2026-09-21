@@ -6,9 +6,12 @@
 # when pushed, triggers the GitHub Actions release workflow that builds the
 # linux amd64/arm64 binaries and the multi-arch Docker image.
 #
+# The working tree must be clean: changes are committed as their own, described
+# commits before deploying, so release tags point at readable history.
+#
 # Usage:
-#   ./deploy.sh                 # commit (if needed), push, tag from package.json
-#   ./deploy.sh "commit message"
+#   ./deploy.sh                 # push, tag from package.json, trigger release
+#   ./deploy.sh --commit "msg"  # escape hatch: commit leftovers first
 #
 set -euo pipefail
 
@@ -21,7 +24,22 @@ else
   VERSION="$(grep -m1 '"version"' package.json | sed -E 's/.*"version"[^"]*"([^"]+)".*/\1/')"
 fi
 TAG="v${VERSION}"
-MSG="${1:-Release ${TAG}}"
+
+# --- argument parsing -------------------------------------------------------
+COMMIT_LEFTOVERS=0
+MSG="Release ${TAG}"
+case "${1:-}" in
+  --commit)
+    COMMIT_LEFTOVERS=1
+    MSG="${2:-Release ${TAG}}"
+    ;;
+  "") ;;
+  *)
+    echo "Unknown argument: $1" >&2
+    echo "Usage: ./deploy.sh [--commit \"commit message\"]" >&2
+    exit 1
+    ;;
+esac
 
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 REPO="$(git config --get remote.origin.url \
@@ -29,13 +47,23 @@ REPO="$(git config --get remote.origin.url \
 
 echo "==> Deploying ${TAG} (branch: ${BRANCH})"
 
-# --- 1) commit pending changes ---------------------------------------------
+# --- 1) working tree must be clean ------------------------------------------
 if [ -n "$(git status --porcelain)" ]; then
-  echo "==> Committing changes"
-  git add -A
-  git commit -m "${MSG}"
+  if [ "${COMMIT_LEFTOVERS}" -eq 1 ]; then
+    echo "==> Committing leftovers: ${MSG}"
+    git add -A
+    git commit -m "${MSG}"
+  else
+    echo "!!  Working tree is dirty. Commit your changes first, so the release" >&2
+    echo "    tag points at described commits instead of a catch-all one:" >&2
+    echo >&2
+    git status --short >&2
+    echo >&2
+    echo "    Then re-run ./deploy.sh (or ./deploy.sh --commit \"message\")." >&2
+    exit 1
+  fi
 else
-  echo "==> Working tree clean, nothing to commit"
+  echo "==> Working tree clean"
 fi
 
 # --- 2) push the branch -----------------------------------------------------
