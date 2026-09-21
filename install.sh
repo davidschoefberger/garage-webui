@@ -49,7 +49,16 @@ mv "${TMP}" "${DEST}"
 trap - EXIT
 
 # --- restart service --------------------------------------------------------
-if systemctl list-unit-files 2>/dev/null | grep -q "^${SERVICE}\.service"; then
+# Ask systemd about the unit directly instead of grepping `list-unit-files`,
+# whose output format/columns vary between systemd versions and which misses
+# units coming from drop-ins or generators.
+service_exists() {
+  command -v systemctl >/dev/null 2>&1 || return 1
+  systemctl cat "${SERVICE}.service" >/dev/null 2>&1 && return 0
+  [ "$(systemctl show -p LoadState --value "${SERVICE}.service" 2>/dev/null)" = "loaded" ]
+}
+
+if service_exists; then
   echo "==> Restarting ${SERVICE}"
   systemctl reset-failed "${SERVICE}" 2>/dev/null || true
   systemctl restart "${SERVICE}"
@@ -57,6 +66,7 @@ if systemctl list-unit-files 2>/dev/null | grep -q "^${SERVICE}\.service"; then
   systemctl --no-pager --lines=5 status "${SERVICE}" || true
 else
   echo "!! systemd service '${SERVICE}' not found — binary installed, start it yourself."
+  echo "   (set GARAGE_WEBUI_SERVICE=<name> if your unit is named differently)"
 fi
 
 echo "==> Done: ${TAG} installed at ${DEST}"

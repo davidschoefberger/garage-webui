@@ -39,7 +39,7 @@ const ClusterPage = () => {
                 href={update.garage.url}
                 target="_blank"
                 rel="noreferrer"
-                className="badge badge-warning border-0 gap-1 h-auto py-0.5 text-xs font-medium hover:underline"
+                className="badge badge-warning badge-sm border-0 gap-1 h-auto py-0.5 text-xs font-medium hover:underline"
                 title={`Latest release: ${update.garage.latest}`}
               >
                 <ArrowUpCircle size={12} />
@@ -79,9 +79,11 @@ const DetailItem = ({ title, value, children }: DetailItemProps) => {
       <div className="shrink-0 w-1/3 max-w-[200px]">
         <p className="text-base-content/80">{title}</p>
       </div>
-      <div className="flex-1 min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1">
-        <p className="truncate">{value}</p>
-        {children}
+      <div className="flex-1 min-w-0">
+        <div className="flex w-fit max-w-full flex-wrap items-center gap-x-2 gap-y-1">
+          <p className="truncate">{value}</p>
+          {children}
+        </div>
       </div>
     </div>
   );
