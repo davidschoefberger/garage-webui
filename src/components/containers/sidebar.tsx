@@ -50,7 +50,7 @@ const Sidebar = () => {
             href={update.webui.url}
             target="_blank"
             rel="noreferrer"
-            className="mt-1 flex items-center justify-center gap-1 text-xs text-primary hover:underline"
+            className="badge badge-warning border-0 gap-1 h-auto py-0.5 mt-1.5 mx-auto text-xs font-medium hover:underline"
             title={`Latest: ${update.webui.latest}`}
           >
             <ArrowUpCircle size={13} />

@@ -2,7 +2,7 @@ import Page from "@/context/page-context";
 import { useClusterStatus, useNodeInfo } from "./hooks";
 import { Card } from "react-daisyui";
 import NodesList from "./components/nodes-list";
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import { useUpdateCheck } from "@/hooks/useUpdateCheck";
 import { ArrowUpCircle } from "lucide-react";
 
@@ -33,19 +33,20 @@ const ClusterPage = () => {
           <Card.Title className="mb-2">Details</Card.Title>
 
           {/* <DetailItem title="Node ID" value={node?.nodeId} /> */}
-          <DetailItem title="Garage Version" value={node?.garageVersion} />
-          {update?.garage.updateAvailable && (
-            <a
-              href={update.garage.url}
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center gap-1 text-xs text-primary hover:underline ml-[calc(33%+0.75rem)]"
-              title={`Latest: ${update.garage.latest}`}
-            >
-              <ArrowUpCircle size={13} />
-              Update available: {update.garage.latest}
-            </a>
-          )}
+          <DetailItem title="Garage Version" value={node?.garageVersion}>
+            {update?.garage.updateAvailable && (
+              <a
+                href={update.garage.url}
+                target="_blank"
+                rel="noreferrer"
+                className="badge badge-warning border-0 gap-1 h-auto py-0.5 text-xs font-medium hover:underline"
+                title={`Latest release: ${update.garage.latest}`}
+              >
+                <ArrowUpCircle size={12} />
+                Update to {update.garage.latest}
+              </a>
+            )}
+          </DetailItem>
           {/* <DetailItem title="Rust version" value={data?.rustVersion} /> */}
           <DetailItem title="DB engine" value={node?.dbEngine} />
           <DetailItem
@@ -69,16 +70,18 @@ const ClusterPage = () => {
 type DetailItemProps = {
   title: string;
   value?: string | number | null;
+  children?: ReactNode;
 };
 
-const DetailItem = ({ title, value }: DetailItemProps) => {
+const DetailItem = ({ title, value, children }: DetailItemProps) => {
   return (
     <div className="flex flex-row items-start max-w-xl gap-3 text-left text-sm">
       <div className="shrink-0 w-1/3 max-w-[200px]">
         <p className="text-base-content/80">{title}</p>
       </div>
-      <div className="flex-1 truncate">
+      <div className="flex-1 min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1">
         <p className="truncate">{value}</p>
+        {children}
       </div>
     </div>
   );
