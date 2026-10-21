@@ -84,7 +84,7 @@ func (o *OIDC) Login(w http.ResponseWriter, r *http.Request) {
 	p, _, err := o.init(r.Context())
 	if err != nil {
 		log.Printf("OIDC discovery failed: %v", err)
-		oidcFail(w, r, "Identity provider is unreachable")
+		oidcFail(w, r, "provider_unreachable")
 		return
 	}
 
@@ -117,7 +117,7 @@ func (o *OIDC) Callback(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	if e := q.Get("error"); e != "" {
 		log.Printf("OIDC provider returned error: %s: %s", e, q.Get("error_description"))
-		oidcFail(w, r, "Login was rejected by the identity provider")
+		oidcFail(w, r, "provider_rejected")
 		return
 	}
 
@@ -125,18 +125,18 @@ func (o *OIDC) Callback(w http.ResponseWriter, r *http.Request) {
 		// Typically SESSION_COOKIE_SAMESITE=strict (the cookie isn't sent on the
 		// cross-site redirect back from the provider) or a server restart.
 		log.Printf("OIDC callback without login state in session (SameSite=strict cookie or expired session?)")
-		oidcFail(w, r, "Login session expired, please try again")
+		oidcFail(w, r, "session_expired")
 		return
 	}
 	if subtle.ConstantTimeCompare([]byte(state), []byte(q.Get("state"))) != 1 {
-		oidcFail(w, r, "Invalid login state, please try again")
+		oidcFail(w, r, "invalid_state")
 		return
 	}
 
 	p, idVerifier, err := o.init(r.Context())
 	if err != nil {
 		log.Printf("OIDC discovery failed: %v", err)
-		oidcFail(w, r, "Identity provider is unreachable")
+		oidcFail(w, r, "provider_unreachable")
 		return
 	}
 
@@ -146,46 +146,46 @@ func (o *OIDC) Callback(w http.ResponseWriter, r *http.Request) {
 	token, err := o.oauthConfig(r, p).Exchange(ctx, q.Get("code"), oauth2.VerifierOption(verifier))
 	if err != nil {
 		log.Printf("OIDC code exchange failed: %v", err)
-		oidcFail(w, r, "Login failed")
+		oidcFail(w, r, "login_failed")
 		return
 	}
 
 	rawIDToken, ok := token.Extra("id_token").(string)
 	if !ok {
 		log.Printf("OIDC token response contains no id_token")
-		oidcFail(w, r, "Login failed")
+		oidcFail(w, r, "login_failed")
 		return
 	}
 
 	idToken, err := idVerifier.Verify(ctx, rawIDToken)
 	if err != nil {
 		log.Printf("OIDC id_token verification failed: %v", err)
-		oidcFail(w, r, "Login failed")
+		oidcFail(w, r, "login_failed")
 		return
 	}
 	if subtle.ConstantTimeCompare([]byte(idToken.Nonce), []byte(nonce)) != 1 {
 		log.Printf("OIDC id_token nonce mismatch")
-		oidcFail(w, r, "Login failed")
+		oidcFail(w, r, "login_failed")
 		return
 	}
 
 	var claims map[string]interface{}
 	if err := idToken.Claims(&claims); err != nil {
 		log.Printf("OIDC cannot decode claims: %v", err)
-		oidcFail(w, r, "Login failed")
+		oidcFail(w, r, "login_failed")
 		return
 	}
 
 	user := oidcUserName(claims, idToken.Subject)
 	if err := checkOIDCGroups(claims); err != nil {
 		log.Printf("OIDC login denied for %s: %v", user, err)
-		oidcFail(w, r, "You are not allowed to access this application")
+		oidcFail(w, r, "forbidden")
 		return
 	}
 
 	if err := utils.Session.RenewToken(r); err != nil {
 		log.Printf("cannot renew session token: %v", err)
-		oidcFail(w, r, "Login failed")
+		oidcFail(w, r, "login_failed")
 		return
 	}
 	// Single-user UI: every OIDC identity maps to the admin session.
@@ -196,9 +196,11 @@ func (o *OIDC) Callback(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, os.Getenv("BASE_PATH")+"/", http.StatusFound)
 }
 
-// oidcFail sends the browser back to the login page with a message to show.
-func oidcFail(w http.ResponseWriter, r *http.Request, msg string) {
-	target := os.Getenv("BASE_PATH") + "/auth/login?error=" + url.QueryEscape(msg)
+// oidcFail sends the browser back to the login page with an error code. Only
+// codes are passed (the frontend maps them to fixed messages) so a crafted
+// link can't put arbitrary text into the login page.
+func oidcFail(w http.ResponseWriter, r *http.Request, code string) {
+	target := os.Getenv("BASE_PATH") + "/auth/login?error=" + url.QueryEscape(code)
 	http.Redirect(w, r, target, http.StatusFound)
 }
 

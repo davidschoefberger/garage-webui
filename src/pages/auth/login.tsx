@@ -12,6 +12,17 @@ import { API_URL } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { CircleAlert, LogIn } from "lucide-react";
 
+// The backend only passes error codes; unknown values get a generic message so
+// a crafted link can't inject text into the page.
+const OIDC_ERRORS: Record<string, string> = {
+  provider_unreachable: "The identity provider is unreachable.",
+  provider_rejected: "Login was rejected by the identity provider.",
+  session_expired: "Login session expired, please try again.",
+  invalid_state: "Invalid login state, please try again.",
+  forbidden: "You are not allowed to access this application.",
+  login_failed: "Login failed.",
+};
+
 export default function LoginPage() {
   const form = useForm({
     resolver: zodResolver(loginSchema),
@@ -20,7 +31,10 @@ export default function LoginPage() {
   const login = useLogin();
   const auth = useAuth();
   const [searchParams] = useSearchParams();
-  const error = searchParams.get("error");
+  const errorCode = searchParams.get("error");
+  const error = errorCode
+    ? OIDC_ERRORS[errorCode] || OIDC_ERRORS.login_failed
+    : null;
 
   return (
     <form
@@ -74,11 +88,7 @@ export default function LoginPage() {
                 </Button>
               </Card.Actions>
             </>
-          ) : (
-            <p className="text-base-content/60">
-              Log in with your {auth.oidcName} account
-            </p>
-          )}
+          ) : null}
 
           {auth.oidcEnabled ? (
             <>
@@ -89,7 +99,7 @@ export default function LoginPage() {
                 href={API_URL + "/auth/oidc/login"}
                 className={cn(
                   "btn w-full",
-                  !auth.passwordEnabled && "btn-primary mt-4"
+                  !auth.passwordEnabled && "btn-neutral mt-2",
                 )}
               >
                 <LogIn size={18} className="-ml-1" />
