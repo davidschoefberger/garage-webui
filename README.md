@@ -156,6 +156,7 @@ Configurable envs:
 - `S3_ENDPOINT_URL`: S3 Endpoint url.
 - `TLS_INSECURE_SKIP_VERIFY`: Set to `true` to skip TLS certificate verification when connecting to Garage over HTTPS (e.g. self-signed certificates). Use with care.
 - `AUTH_USER_PASS_FILE`: Path to a file containing the `username:password_hash` auth value (e.g. a Docker/Kubernetes secret). Takes precedence over `AUTH_USER_PASS`.
+- `OIDC_*`: OpenID Connect login, see [OIDC / SSO](#oidc--sso).
 - `SESSION_COOKIE_SECURE`: Set to `true` to mark the session cookie as `Secure`. Defaults to `false` so login works when the UI is served over plain HTTP behind a TLS-terminating reverse proxy / load balancer. Enable it when serving directly over HTTPS.
 - `SESSION_COOKIE_SAMESITE`: Session cookie `SameSite` mode: `lax` (default), `strict`, or `none`. Use `none` (together with `SESSION_COOKIE_SECURE=true`) only if you embed the UI cross-site.
 - `UPDATE_CHECK_DISABLED`: Set to `true` to disable the built-in update check (which contacts GitHub to compare versions). Useful for air-gapped deployments.
@@ -188,6 +189,42 @@ webui:
 
 > Alternatively, use `AUTH_USER_PASS_FILE` to point at a file (e.g. a Docker
 > secret) containing the raw `username:password_hash` value — no escaping needed.
+
+### OIDC / SSO
+
+As an alternative (or in addition) to `AUTH_USER_PASS`, you can log in through an
+OpenID Connect provider such as [Pocket ID](https://pocket-id.org/), Authelia,
+Authentik or Keycloak. The web UI has a single admin role, so **every user the
+provider lets through gets full admin access** — restrict access at the provider
+(in Pocket ID: *Allowed User Groups* on the OIDC client) and/or with
+`OIDC_ALLOWED_GROUPS`.
+
+| Variable | Description |
+| --- | --- |
+| `OIDC_ISSUER_URL` | Issuer URL, e.g. `https://id.example.com`. Must match the provider's `issuer` exactly. Required. |
+| `OIDC_CLIENT_ID` | Client ID. Required. |
+| `OIDC_CLIENT_SECRET` | Client secret (leave empty for a public/PKCE-only client). `OIDC_CLIENT_SECRET_FILE` is supported. |
+| `OIDC_REDIRECT_URL` | Callback URL registered at the provider: `https://<host><BASE_PATH>/api/auth/oidc/callback`. If unset it is derived from the request (`X-Forwarded-Proto`/`X-Forwarded-Host` are honoured). Setting it explicitly is recommended. |
+| `OIDC_PROVIDER_NAME` | Label on the login button ("Login with …"). Defaults to `SSO`. |
+| `OIDC_SCOPES` | Requested scopes. Defaults to `openid profile email`. |
+| `OIDC_ALLOWED_GROUPS` | Optional comma-separated list of groups; the user must be in at least one. `groups` is then added to the scopes automatically. |
+| `OIDC_GROUPS_CLAIM` | Claim holding the user's groups. Defaults to `groups`. |
+
+If only OIDC is configured (no `AUTH_USER_PASS`), the login page shows just the
+SSO button. The session cookie must use `SameSite=lax` (the default) — with
+`strict`, the cookie isn't sent on the redirect back from the provider.
+
+Pocket ID example: create an OIDC client with callback URL
+`https://garage.example.com/api/auth/oidc/callback`, then:
+
+```bash
+OIDC_ISSUER_URL=https://id.example.com
+OIDC_CLIENT_ID=<client id>
+OIDC_CLIENT_SECRET=<client secret>
+OIDC_REDIRECT_URL=https://garage.example.com/api/auth/oidc/callback
+OIDC_PROVIDER_NAME="Pocket ID"
+OIDC_ALLOWED_GROUPS=garage-admins   # optional
+```
 
 ### Running
 

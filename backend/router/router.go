@@ -10,10 +10,14 @@ func HandleApiRouter() *http.ServeMux {
 
 	auth := &Auth{}
 	mux.HandleFunc("POST /auth/login", auth.Login)
+	mux.HandleFunc("GET /auth/status", auth.GetStatus)
+
+	oidcAuth := NewOIDC()
+	mux.HandleFunc("GET /auth/oidc/login", oidcAuth.Login)
+	mux.HandleFunc("GET /auth/oidc/callback", oidcAuth.Callback)
 
 	router := http.NewServeMux()
 	router.HandleFunc("POST /auth/logout", auth.Logout)
-	router.HandleFunc("GET /auth/status", auth.GetStatus)
 
 	config := &Config{}
 	router.HandleFunc("GET /config", config.GetAll)

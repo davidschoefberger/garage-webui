@@ -109,6 +109,7 @@ const Sidebar = () => {
 };
 
 const LogoutButton = () => {
+  const auth = useAuth();
   const logout = useMutation({
     mutationFn: () => api.post("/auth/logout"),
     onSuccess: () => {
@@ -120,7 +121,12 @@ const LogoutButton = () => {
   });
 
   return (
-    <Button className="flex-1" icon={LogOut} onClick={() => logout.mutate()}>
+    <Button
+      className="flex-1"
+      icon={LogOut}
+      onClick={() => logout.mutate()}
+      title={auth.user ? `Logged in as ${auth.user}` : undefined}
+    >
       Logout
     </Button>
   );

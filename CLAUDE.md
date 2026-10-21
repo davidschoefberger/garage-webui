@@ -13,7 +13,9 @@ re-implemented cleanly here rather than cherry-picked from foreign branches.
   admin + S3 APIs (`backend/`)
 - Deployed as a bare binary under systemd (not Docker) on the maintainer's cluster
 
-Out of scope: SSO (upstream #60) and LDAP (#57).
+Out of scope: LDAP (#57). SSO (upstream #60) is covered by generic OIDC login
+(`backend/router/oidc.go`) — every OIDC user maps
+to the single admin session; there are no roles.
 
 ## Workflow
 
@@ -92,3 +94,6 @@ There is no test Garage cluster available. Changes touching the alias refactor,
 lifecycle rules, rename, multipart upload, bulk operations and key-permission
 verification are unverified at runtime — say so when reporting, rather than
 implying they were tested.
+
+OIDC login has been exercised end-to-end against a mock provider
+(`github.com/oauth2-proxy/mockoidc`), not against a real Pocket ID instance.

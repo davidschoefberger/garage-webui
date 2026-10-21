@@ -22,9 +22,9 @@ func (c *Auth) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userPass := strings.Split(utils.GetSecret("AUTH_USER_PASS"), ":")
+	userPass := strings.SplitN(utils.GetSecret("AUTH_USER_PASS"), ":", 2)
 	if len(userPass) < 2 {
-		utils.ResponseErrorStatus(w, errors.New("AUTH_USER_PASS not set"), 500)
+		utils.ResponseErrorStatus(w, errors.New("password login is not enabled"), http.StatusBadRequest)
 		return
 	}
 
@@ -33,7 +33,12 @@ func (c *Auth) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := utils.Session.RenewToken(r); err != nil {
+		utils.ResponseError(w, err)
+		return
+	}
 	utils.Session.Set(r, "authenticated", true)
+	utils.Session.Set(r, "user", userPass[0])
 	utils.ResponseSuccess(w, map[string]bool{
 		"authenticated": true,
 	})
@@ -45,20 +50,23 @@ func (c *Auth) Logout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *Auth) GetStatus(w http.ResponseWriter, r *http.Request) {
-	isAuthenticated := true
-	authSession := utils.Session.Get(r, "authenticated")
-	enabled := false
+	enabled := utils.AuthEnabled()
+	authSession, _ := utils.Session.Get(r, "authenticated").(bool)
 
-	if utils.GetSecret("AUTH_USER_PASS") != "" {
-		enabled = true
-	}
-
-	if authSession != nil && authSession.(bool) {
-		isAuthenticated = true
-	}
-
-	utils.ResponseSuccess(w, map[string]bool{
+	res := map[string]interface{}{
 		"enabled":       enabled,
-		"authenticated": isAuthenticated,
-	})
+		"authenticated": !enabled || authSession,
+		"methods": map[string]interface{}{
+			"password": utils.PasswordAuthEnabled(),
+			"oidc":     utils.OIDCEnabled(),
+		},
+	}
+	if utils.OIDCEnabled() {
+		res["oidcName"] = utils.GetEnv("OIDC_PROVIDER_NAME", "SSO")
+	}
+	if user, ok := utils.Session.Get(r, "user").(string); ok && authSession {
+		res["user"] = user
+	}
+
+	utils.ResponseSuccess(w, res)
 }

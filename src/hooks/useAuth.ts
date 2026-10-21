@@ -4,6 +4,12 @@ import { useQuery } from "@tanstack/react-query";
 type AuthResponse = {
   enabled: boolean;
   authenticated: boolean;
+  methods?: {
+    password: boolean;
+    oidc: boolean;
+  };
+  oidcName?: string;
+  user?: string;
 };
 
 export const useAuth = () => {
@@ -16,5 +22,10 @@ export const useAuth = () => {
     isLoading,
     isEnabled: data?.enabled,
     isAuthenticated: data?.authenticated,
+    // Older backends don't report methods; they only support password login.
+    passwordEnabled: data?.methods?.password ?? true,
+    oidcEnabled: data?.methods?.oidc ?? false,
+    oidcName: data?.oidcName || "SSO",
+    user: data?.user,
   };
 };

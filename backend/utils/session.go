@@ -46,6 +46,17 @@ func (s *SessionManager) Set(r *http.Request, key string, value interface{}) {
 	s.mgr.Put(r.Context(), key, value)
 }
 
+// Pop returns the value for key and removes it from the session.
+func (s *SessionManager) Pop(r *http.Request, key string) interface{} {
+	return s.mgr.Pop(r.Context(), key)
+}
+
+// RenewToken issues a new session ID while keeping the session data. Call it
+// on every privilege change (login) to prevent session fixation.
+func (s *SessionManager) RenewToken(r *http.Request) error {
+	return s.mgr.RenewToken(r.Context())
+}
+
 func (s *SessionManager) Clear(r *http.Request) error {
 	return s.mgr.Clear(r.Context())
 }

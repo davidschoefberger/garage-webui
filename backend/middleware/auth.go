@@ -7,16 +7,15 @@ import (
 )
 
 func AuthMiddleware(next http.Handler) http.Handler {
-	authData := utils.GetSecret("AUTH_USER_PASS")
+	enabled := utils.AuthEnabled()
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		auth := utils.Session.Get(r, "authenticated")
-
-		if authData == "" {
+		if !enabled {
 			next.ServeHTTP(w, r)
 			return
 		}
 
+		auth := utils.Session.Get(r, "authenticated")
 		if auth == nil || !auth.(bool) {
 			utils.ResponseErrorStatus(w, errors.New("unauthorized"), http.StatusUnauthorized)
 			return
